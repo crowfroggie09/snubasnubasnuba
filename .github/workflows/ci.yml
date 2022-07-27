@@ -48,7 +48,7 @@ jobs:
 
   snuba-arm64-image-arm:
     name: "Docker Arm64 build"
-    runs-on: [buildjet-16vcpu-ubuntu-2204, buildjet-pinned-test_arm]
+    runs-on: [buildjet-2vcpu-ubuntu-2204, buildjet-pinned-test_arm]
     env:
       # `sentry devservices up snuba` picks up the `amd64` version of the image
       # For now, we will publish to a different name until we want to officially
