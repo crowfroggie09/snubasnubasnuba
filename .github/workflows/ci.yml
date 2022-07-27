@@ -84,6 +84,8 @@ jobs:
         run: lscpu
       - name: log arc
         run: uname -m
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Create Image
         run: |
           docker buildx create --name arm64-builder --use
