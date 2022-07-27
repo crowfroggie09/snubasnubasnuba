@@ -31,11 +31,6 @@ jobs:
         run: uname -m
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
-
-#       - name: Pull snuba CI images
-#         run: |
-#           docker pull ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} || \
-#             docker pull ${SNUBA_IMAGE}:latest || true
       - name: Create Image
         run: |
           docker buildx create --name arm64-builder --use
@@ -50,10 +45,6 @@ jobs:
     name: "Docker Arm64 build"
     runs-on: [buildjet-2vcpu-ubuntu-2204, buildjet-pinned-test_arm]
     env:
-      # `sentry devservices up snuba` picks up the `amd64` version of the image
-      # For now, we will publish to a different name until we want to officially
-      # support the image on Docker Hub
-      # NOTE: This image has only been tested for local development
       SNUBA_IMAGE: ghcr.io/getsentry/snuba-arm64-dev
     steps:
       - uses: actions/checkout@v2
@@ -67,13 +58,32 @@ jobs:
         run: lscpu
       - name: log arc
         run: uname -m
-#       - name: Pull snuba CI images
-#         run: |
-#           docker pull ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} || \
-#             docker pull ${SNUBA_IMAGE}:latest || true
-#             --cache-from ${SNUBA_IMAGE}:latest \
-#             --cache-from ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
-
+      - name: Create Image
+        run: |
+          docker buildx create --name arm64-builder --use
+          docker buildx build --platform linux/arm64 \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -t ${SNUBA_IMAGE}:latest \
+            -t ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
+            -t ${SNUBA_IMAGE}:${{ github.sha }} \
+            --load .
+  snuba-not-arm64-image-arm:
+    name: "Docker NOT Arm64 buildjet"
+    runs-on: buildjet-2vcpu-ubuntu-2204
+    env:
+      SNUBA_IMAGE: ghcr.io/getsentry/snuba-arm64-dev
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout code
+      - name: Get branch name
+        id: branch
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/} | tr / -)"
+      - name: log arc
+        run: cat /proc/cpuinfo
+      - name: log arc
+        run: lscpu
+      - name: log arc
+        run: uname -m
       - name: Create Image
         run: |
           docker buildx create --name arm64-builder --use
