@@ -6,14 +6,9 @@ on:
   pull_request:
 
 jobs:
-
-  # This step does not have a set timeout because it is very slow. This is due
-  # because emulation required (this is running on an Intel host rather than an arm64 host)
-  # and that many Python packages do not have arm wheels, thus, requirying to build them from source.
-  # Upgrading Python package versions + giving access to a cache could improve things a lot
-  snuba-arm64-image:
-    name: "Docker Arm64 build"
-    runs-on: [buildjet-16vcpu-ubuntu-2204,buildjet-pinned-test_arm]
+  snuba-arm64-image-not-arm:
+    name: "Docker Not ARM"
+    runs-on: ubuntu-latest
     env:
       # `sentry devservices up snuba` picks up the `amd64` version of the image
       # For now, we will publish to a different name until we want to officially
@@ -23,32 +18,64 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         name: Checkout code
-
       - name: Get branch name
         id: branch
         # strip `refs/heads/` from $GITHUB_REF and replace `/` with `-` so that
         # it can be used as a docker tag
         run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/} | tr / -)"
-
-#       - name: enable arm64 building
-#         run: docker run --rm --privileged tonistiigi/binfmt --install arm64
-
-#       - name: Registry login
+      - name: log arc
+        run: cat /proc/cpuinfo
+      - name: log arc
+        run: lscpu
+      - name: log arc
+        run: uname -m
+#       - name: Pull snuba CI images
 #         run: |
-#           echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-
-      - name: Pull snuba CI images
+#           docker pull ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} || \
+#             docker pull ${SNUBA_IMAGE}:latest || true
+      - name: Create Image
         run: |
-          docker pull ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} || \
-            docker pull ${SNUBA_IMAGE}:latest || true
+          docker buildx create --name arm64-builder --use
+          docker buildx build --platform linux/arm64 \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            -t ${SNUBA_IMAGE}:latest \
+            -t ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
+            -t ${SNUBA_IMAGE}:${{ github.sha }} \
+            --load .
+
+  snuba-arm64-image-arm:
+    name: "Docker Arm64 build"
+    runs-on: [buildjet-16vcpu-ubuntu-2204, buildjet-pinned-test_arm]
+    env:
+      # `sentry devservices up snuba` picks up the `amd64` version of the image
+      # For now, we will publish to a different name until we want to officially
+      # support the image on Docker Hub
+      # NOTE: This image has only been tested for local development
+      SNUBA_IMAGE: ghcr.io/getsentry/snuba-arm64-dev
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout code
+      - name: Get branch name
+        id: branch
+        run: echo "::set-output name=branch::$(echo ${GITHUB_REF#refs/heads/} | tr / -)"
+      - name: log arc
+        run: cat /proc/cpuinfo
+      - name: log arc
+        run: lscpu
+      - name: log arc
+        run: uname -m
+#       - name: Pull snuba CI images
+#         run: |
+#           docker pull ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} || \
+#             docker pull ${SNUBA_IMAGE}:latest || true
+#             --cache-from ${SNUBA_IMAGE}:latest \
+#             --cache-from ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
 
       - name: Create Image
         run: |
           docker buildx create --name arm64-builder --use
           docker buildx build --platform linux/arm64 \
             --build-arg BUILDKIT_INLINE_CACHE=1 \
-            --cache-from ${SNUBA_IMAGE}:latest \
-            --cache-from ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
             -t ${SNUBA_IMAGE}:latest \
             -t ${SNUBA_IMAGE}:${{ steps.branch.outputs.branch }} \
             -t ${SNUBA_IMAGE}:${{ github.sha }} \
