@@ -10,7 +10,7 @@ coverage==6.4.1
 datadog==0.44.0
 deprecation==2.1.0
 docopt==0.6.2
-flake8==4.0.1
+flake8==6.0.0
 Flask==2.1.2
 future==0.18.2
 honcho==1.1.0
